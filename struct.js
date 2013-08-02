@@ -69,9 +69,9 @@
         if (isObject(model[key])) {
           struct[key] = make(model[key], dv, that);
         } else {
-          var typedef = isArray(model[key]) ? model[key][0] : model[key];
-          struct[key] = dv['get' + capitalise(typedef)](that.offset, that.endian);
-          that.offset += typedefs[typedef];
+          var typed = (isArray(model[key]) ? model[key][0] : model[key]).toLowerCase();
+          struct[key] = dv['get' + capitalise(typed)](that.offset, that.endian);
+          that.offset += typedefs[typed];
         }
       }
     }
@@ -83,7 +83,8 @@
     var byteLength = 0;
 
     align(struct, function(item) {
-      byteLength += typedefs[isString(item) ? item : item[0]];
+      var typed = (isString(item) ? item : item[0]).toLowerCase();
+      byteLength += typedefs[typed];
     });
    
     return byteLength;
@@ -118,11 +119,11 @@
       if (struct != undefined) this.struct = update(this.struct, struct);
   
       align(this.struct, function(item) {
-        var typedef = isString(item) ? item : item[0]
+        var typed = (isString(item) ? item : item[0]).toLowerCase()
           , value = isString(item) ? defaultValue : item[1];
-  
-        dataView['set' + capitalise(typedef)](offset, value, endian);
-        offset += typedefs[typedef];
+
+        dataView['set' + capitalise(typed)](offset, value, endian);
+        offset += typedefs[typed];
       });
       
       return dataView.buffer;
