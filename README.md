@@ -5,7 +5,7 @@ C-Like Struct for JavaScript
 
 
 ### Usage
-
+ ```javascript
     /**
      * create struct
      *
@@ -52,7 +52,7 @@ C-Like Struct for JavaScript
 
     struct.read(ab2);
     // => Obejct {foo: 255, bar: 127, baz: {qux: 0}}
-    
+```
 Have fun!
 
 ### License
