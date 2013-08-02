@@ -25,11 +25,10 @@ C-Like Struct for JavaScript
       
     /**
      * write arraybuffer from javascript object
-     *
      */
 
     var ab = struct.write();
-    // => ArrayBuffer {byteLength: 4, slice: function};
+    // => ArrayBuffer {byteLength: 4, slice: function}
 
 
     /**
@@ -43,13 +42,13 @@ C-Like Struct for JavaScript
 
 
     /**
-     * update data and write and read
+     * update data with write and read
      *
      * arg1 = object(optional)
      */
 
     var ab2 = struct.write({foo: 255, baz: {qux: 0}};
-    // => ArrayBuffer {byteLength: 4, slice: function};
+    // => ArrayBuffer {byteLength: 4, slice: function}
 
     struct.read(ab2);
     // => Obejct {foo: 255, bar: 127, baz: {qux: 0}}
