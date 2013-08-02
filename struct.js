@@ -3,11 +3,11 @@
  *
  * @author Joon Kyoung (aka. Firejune)
  * @license MIT
- * @version 0.1.0
+ * @version 0.1.1
  *
  */
  
-(function(exports) {
+(function(exports, undefined) {
 
   var typedefs = {
     int8 : 1, uint8 : 1,
@@ -15,29 +15,6 @@
     int32: 4, uint32: 4, float32: 4,
     float64: 8
   };
-
-  function forEach(model, callback) {
-    for (var key in model) {
-      if (isObject(model[key]))
-        forEach(model[key], callback);
-      else
-        callback(model[key]);
-    }
-  }
-
-  function capitalise(str) {
-    return str.charAt(0).toUpperCase() + str.slice(1);
-  }
-
-  function getByteLength(struct) {
-    var byteLength = 0;
-
-    forEach(struct, function(item) {
-      byteLength += typedefs[item[0]];
-    });
-    
-    return byteLength;
-  }
 
   function isArray(a) {
     return (!!a) && (a.constructor === Array);
@@ -51,29 +28,75 @@
     return (!!a) && (a.constructor === String);
   }
 
+  function capitalise(str) {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  }
+
+  function update(model, obj) {
+    for (var p in obj) {
+      if (model.hasOwnProperty(p)) {
+        if (isString(model[p])) {
+          model[p] = [model[p], 0];
+        }
+
+        if (isObject(model[p])) {
+          model[p] = update(model[p], obj[p]);
+        } else {
+          model[p][1] = obj[p];
+        }
+      }
+    }
+    return model;
+  }
+
+  function align(model, callback) {
+    for (var key in model) {
+      if (model.hasOwnProperty(key)) {
+        if (isObject(model[key])) {
+          align(model[key], callback);
+        } else {
+          callback(model[key], key);
+        }
+      }
+    }
+  }
+
+  function make(model, dv, that) {
+    var struct = {};
+
+    for (var key in model) {
+      if (model.hasOwnProperty(key)) {
+        if (isObject(model[key])) {
+          struct[key] = make(model[key], dv, that);
+        } else {
+          var typedef = isArray(model[key]) ? model[key][0] : model[key];
+          struct[key] = dv['get' + capitalise(typedef)](that.offset, that.endian);
+          that.offset += typedefs[typedef];
+        }
+      }
+    }
+
+    return struct;
+  }
+
+  function getByteLength(struct) {
+    var byteLength = 0;
+
+    align(struct, function(item) {
+      byteLength += typedefs[isString(item) ? item : item[0]];
+    });
+   
+    return byteLength;
+  }
 
   var Struct = function(struct, value, endian) {
     this.struct = struct;
     this.defaultValue = value || 0;
+    this.emptyBuffer = new ArrayBuffer(getByteLength(struct));
     this.endian = endian == undefined ? true : endian;
   };
 
   Struct.prototype = {
-    _align: function(model, dv) {
-      var struct = {};
-  
-      for (var key in model) {
-        if (isObject(model[key])) {
-          struct[key] = this._align(model[key], dv);
-        } else {
-          var typedef = isArray(model[key]) ? model[key][0] : model[key];
-          struct[key] = dv['get' + capitalise(typedef)](this.offset, this.endian);
-          this.offset += typedefs[typedef];
-        }
-      }
-  
-      return struct;
-    },
     read: function(arrayBuffer, offset) {
       var dataView;
       if (arrayBuffer instanceof DataView) {
@@ -83,17 +106,18 @@
       }
 
       this.offset = offset || 0;
-      return this._align(this.struct, dataView);
+      return make(this.struct, dataView, this);
     },
-    write: function() {
-      var byteLength = getByteLength(this.struct)
-        , arrayBuffer = new ArrayBuffer(byteLength)
-        , dataView = new DataView(arrayBuffer)
+
+    write: function(struct) {
+      var dataView = new DataView(this.emptyBuffer)
         , defaultValue = this.defaultValue
         , endian = this.endian
         , offset = 0;
   
-      forEach(this.struct, function(item) {
+      if (struct != undefined) this.struct = update(this.struct, struct);
+  
+      align(this.struct, function(item) {
         var typedef = isString(item) ? item : item[0]
           , value = isString(item) ? defaultValue : item[1];
   

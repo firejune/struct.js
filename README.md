@@ -7,36 +7,52 @@ C-Like Struct for JavaScript
 ### Usage
 
     /**
-     * write arraybuffer from javascript object
+     * create struct
      *
      * arg1 = data object
-     * arg2 = default value(optional default 0)
+     * arg2 = default value(optional, default 0)
      * arg3 = endian(optional, default true)
      */
 
     var struct = new Struct({
-      foo: ['uint8', 255], // foo 키에 값이 255로 할당 됨
-      bar: ['int8', 127], 
+      foo: 'uint8',
+      bar: ['int8', 127],
       baz: {
-        qux: ['uint16', 65535] // 값을 지정하지 않는 경우 기본값이 설정됨
+        qux: ['uint16', 65535]
       }
     }, 0, true);
+
       
-    var ab = struct.write(); // return ArrayBuffer
-    console.log(ab);
+    /**
+     * write arraybuffer from javascript object
+     *
+     */
+
+    var ab = struct.write();
     // => ArrayBuffer {byteLength: 4, slice: function};
 
 
     /**
-     * read data from arraybuffer
+     * read data object from arraybuffer
      *
      * arg1 = arraybuffer
      */
 
-    var data = struct.read(ab);
-    console.log(data);
-    // => Obejct {foo: 255, bar: 127, baz: {qux: 65535}}
-    
+    struct.read(ab);
+    // => Obejct {foo: 0, bar: 127, baz: {qux: 65535}}
+
+
+    /**
+     * update data and write and read
+     *
+     * arg1 = object(optional)
+     */
+
+    var ab2 = struct.write({foo: 255, baz: {qux: 0}};
+    // => ArrayBuffer {byteLength: 4, slice: function};
+
+    struct.read(ab2);
+    // => Obejct {foo: 255, bar: 127, baz: {qux: 0}}
     
 Have fun!
 
