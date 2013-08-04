@@ -10,8 +10,45 @@ C-Like Struct for JavaScript.
 * Teeny tiny library
 * Super easy to use
 
-### Usage
- ```javascript
+### Why?
+This code is not elegance.
+```javascript
+// define struct
+var struct = {
+  foo: 0,
+  bar: 127,
+  baz: {
+    qux: 65535
+  }
+};
+
+// write arraybuffer from javascript object
+var ab = new ArrayBuffer(4);
+var dv = new DataView(ab);
+dv.setUint8(0, struct.foo);
+dv.setInt8(1, struct.bar);
+dv.setUint16(2, struct.baz.qux, true);
+
+console.log(dv.buffer);
+// => ArrayBuffer {byteLength: 4, slice: function}
+
+// read data from arraybuffer
+var dv2 = new DataView(dv.buffer);
+var data = {
+  foo: dv2.getUint8(0),
+  bar: dv2.getInt8(1),
+  baz: {
+    qux: dv2.getUint16(2, true)
+  }
+};
+
+console.log(data);
+// => Obejct {foo: 0, bar: 127, baz: {qux: 65535}}}
+```
+
+### With struct.js
+Elegance and more.
+```javascript
 /**
  * create struct
  *
@@ -51,7 +88,7 @@ struct.read(ab);
 
 
 /**
- * update data with write and read
+ * update data of arrayBuffer with write and read methods
  */
 
 var ab2 = struct.write({foo: 255, baz: {qux: 0}};
@@ -59,8 +96,10 @@ var ab2 = struct.write({foo: 255, baz: {qux: 0}};
 
 struct.read(ab2);
 // => Obejct {foo: 255, bar: 127, baz: {qux: 0}}
+```
 
-
+#### Using custom offset for multiple binary
+```javascript
 /**
  * read data with custom offset
  */
@@ -98,4 +137,12 @@ Have fun!
 
 ### License
 
-MIT <3
+The MIT License
+
+Copyright (c) 2013 firejune (http://firejune.com)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
