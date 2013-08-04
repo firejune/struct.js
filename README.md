@@ -1,7 +1,7 @@
 struct.js
 =========
 
-C-Like Struct for JavaScript.
+C-Like Data Structure for JavaScript.
 * Support multiple typed array
 * Calculate offset automatically
 * Convert javascript data structure to arrayBuffer
