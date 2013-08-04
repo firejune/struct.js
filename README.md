@@ -25,6 +25,8 @@ var struct = new Struct({
   
 /**
  * write arraybuffer from javascript object
+ *
+ * arg1 = object(optional)
  */
 
 var ab = struct.write();
@@ -35,6 +37,7 @@ var ab = struct.write();
  * read data object from arraybuffer
  *
  * arg1 = arraybuffer
+ * arg2 = offset(optinal, default 0)
  */
 
 struct.read(ab);
@@ -43,8 +46,6 @@ struct.read(ab);
 
 /**
  * update data with write and read
- *
- * arg1 = object(optional)
  */
 
 var ab2 = struct.write({foo: 255, baz: {qux: 0}};
@@ -52,6 +53,26 @@ var ab2 = struct.write({foo: 255, baz: {qux: 0}};
 
 struct.read(ab2);
 // => Obejct {foo: 255, bar: 127, baz: {qux: 0}}
+
+
+/**
+ * read data with custom offset
+ */
+
+var struct = new Struct({byteLength: 'uint32'});
+
+...
+
+function parseBinary(count, chunk, callback) {
+  var offset = 0;
+  for (var index = 0; index < count; index++) {
+    var meta = struct.read(chunk, offset)
+      , buffer = chunk.slice(offset + struct.byteLength, offset + meta.byteLength);
+  
+    callback(meta, new Uint8Array(buffer));
+    offset += meta.byteLength + struct.byteLength;
+  }
+}
 ```
 Have fun!
 

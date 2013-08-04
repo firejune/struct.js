@@ -3,17 +3,17 @@
  *
  * @author Joon Kyoung (aka. Firejune)
  * @license MIT
- * @version 0.1.1
+ * @version 0.1.2
  *
  */
  
 (function(exports, undefined) {
 
   var typedefs = {
-    int8 : 1, uint8 : 1,
-    int16: 2, uint16: 2,
-    int32: 4, uint32: 4, float32: 4,
-    float64: 8
+    int8   : 1, uint8  : 1,
+    int16  : 2, uint16 : 2,
+    int32  : 4, uint32 : 4,
+    float32: 4, float64: 8
   };
 
   function isArray(a) {
@@ -93,7 +93,8 @@
   var Struct = function(struct, value, endian) {
     this.struct = struct;
     this.defaultValue = value || 0;
-    this.emptyBuffer = new ArrayBuffer(getByteLength(struct));
+    this.byteLength = getByteLength(struct);
+    this.emptyBuffer = new ArrayBuffer(this.byteLength);
     this.endian = endian == undefined ? true : endian;
   };
 
