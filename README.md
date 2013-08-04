@@ -59,7 +59,12 @@ struct.read(ab2);
  * read data with custom offset
  */
 
-var struct = new Struct({byteLength: 'uint32'});
+var struct = new Struct({
+  sig: 'uint8',
+  mimeType: 'uint8',
+  id: 'uint16',
+  byteLength: 'uint32'
+});
 
 ...
 
