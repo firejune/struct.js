@@ -130,11 +130,11 @@ function parseBinary(count, chunk, callback) {
 Have fun!
 
 ### Coming Soon
-* Support data type keywords of C
+* Support define data type using keywords of C
 * Support mult-byte typed arrays
 * Support unicode encoding/decoding
 * Support merge other data structure
-* Support append arrayBuffer to body frmae
+* Support append arrayBuffer to last frmae
 
 ### License
 
