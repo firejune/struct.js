@@ -7,7 +7,7 @@ C-Like Struct for JavaScript.
 * Convert javascript data structure to arrayBuffer
 * Convert arrayBuffer to javascript data structure
 * Recycling of javascript structure
-* Cool updating values of typed array
+* Cool updating values of arrayBuffer
 * Teeny tiny library
 * Super easy to use
 
