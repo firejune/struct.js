@@ -72,10 +72,12 @@ function parseBinary(count, chunk, callback) {
   var offset = 0;
   for (var index = 0; index < count; index++) {
     var meta = struct.read(chunk, offset)
-      , buffer = chunk.slice(offset + struct.byteLength, offset + meta.byteLength);
-  
+      , buffer = chunk.slice(
+        offset += struct.byteLength,
+        offset += meta.byteLength
+      );
+
     callback(meta, new Uint8Array(buffer));
-    offset += meta.byteLength + struct.byteLength;
   }
 }
 ```
