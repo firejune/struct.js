@@ -1,13 +1,14 @@
 struct.js
 =========
 
-C-Like Struct for JavaScript
-* Convert javascript data structure to typed array(Binary)
-* Convert typed array to javascript data structure
+C-Like Struct for JavaScript.
+* Support multiple typed array
+* Convert javascript data structure to arrayBuffer
+* Convert arrayBuffer to javascript data structure
 * Recycling of javascript structure
 * Cool updating values of typed array
-* Easy to use
-* Tiny library
+* Teeny tiny library
+* Super easy to use
 
 ### Usage
  ```javascript
@@ -89,9 +90,11 @@ function parseBinary(count, chunk, callback) {
 Have fun!
 
 ### TODO
+* Support data type keywords of C
 * Support mult-byte typed arrays
+* Support unicode encoding/decoding
 * Support merge other data structure
-* Support append arrayBuffer(body frmae)
+* Support append arrayBuffer to body frmae
 
 ### License
 
