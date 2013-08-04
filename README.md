@@ -3,6 +3,7 @@ struct.js
 
 C-Like Struct for JavaScript.
 * Support multiple typed array
+* Calculate offset automatically
 * Convert javascript data structure to arrayBuffer
 * Convert arrayBuffer to javascript data structure
 * Recycling of javascript structure
