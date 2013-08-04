@@ -99,7 +99,7 @@ struct.read(ab2);
 // => Obejct {foo: 255, bar: 127, baz: {qux: 0}}
 ```
 
-#### Using custom offset for multiple binary
+Using custom offset for multiple binary:
 ```javascript
 /**
  * read data with custom offset
@@ -129,7 +129,7 @@ function parseBinary(count, chunk, callback) {
 ```
 Have fun!
 
-### TODO
+### Coming Soon
 * Support data type keywords of C
 * Support mult-byte typed arrays
 * Support unicode encoding/decoding
