@@ -1,5 +1,5 @@
 /*!
- * C-Like Struct for JavaScript
+ * C-Like Data Structure for JavaScript.
  *
  * @author Joon Kyoung (aka. Firejune)
  * @license MIT
