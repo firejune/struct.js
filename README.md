@@ -2,6 +2,9 @@ struct.js
 =========
 
 C-Like Data Structure for JavaScript.
+* Support mult-byte typed arrays
+* Auto convert string to charCode
+* Auto convert charCode to string
 * Support multiple typed array
 * Calculate offset automatically
 * Convert javascript data structure to arrayBuffer
@@ -44,7 +47,7 @@ var data = {
 };
 
 console.log(data);
-// => Obejct {foo: 0, bar: 127, baz: {qux: 65535}}}
+// => Obejct {foo: 0, bar: 127, baz: {qux: 65535}}
 ```
 
 ### With struct.js
@@ -54,8 +57,8 @@ Elegance and more.
  * create struct
  *
  * arg1 = data object
- * arg2 = default value(optional, default 0)
- * arg3 = endian(optional, default true)
+ * arg2 = default value[optional, default 0]
+ * arg3 = endian[optional, default true]
  */
 
 var struct = new Struct({
@@ -70,7 +73,7 @@ var struct = new Struct({
 /**
  * write arraybuffer from javascript object
  *
- * arg1 = object(optional)
+ * arg1 = object[optional]
  */
 
 var ab = struct.write();
@@ -81,7 +84,7 @@ var ab = struct.write();
  * read data object from arraybuffer
  *
  * arg1 = arraybuffer
- * arg2 = offset(optinal, default 0)
+ * arg2 = offset[optinal, default 0]
  */
 
 struct.read(ab);
@@ -92,7 +95,7 @@ struct.read(ab);
  * update data of arrayBuffer with write and read methods
  */
 
-var ab2 = struct.write({foo: 255, baz: {qux: 0}};
+var ab2 = struct.write({foo: 255, baz: {qux: 0}});
 // => ArrayBuffer {byteLength: 4, slice: function}
 
 struct.read(ab2);
@@ -127,14 +130,26 @@ function parseBinary(count, chunk, callback) {
   }
 }
 ```
+
+Support multi-byte typed array and convert string automatically:
+```javascript
+/**
+ * create struct with multi-byte value
+ */
+
+var struct = new Struct({
+  foo: ['uint16', [0xffff, 4095]],
+  bar: ['uint8', 'firejune', 8]
+});
+
+var ab = struct.write();
+// => ArrayBuffer {byteLength: 12, slice: function}
+
+var obj = struct.read(ab);
+// => Object {bar: [65535, 4095], qux: "firejune"}
+```
 Have fun!
 
-### Coming Soon
-* Support define data type using keywords of C
-* Support mult-byte typed arrays
-* Support unicode encoding/decoding
-* Support merge other data structure
-* Support append arrayBuffer to last frmae
 
 ### License
 
