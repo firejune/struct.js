@@ -56,9 +56,9 @@ More sexy things for handle straight binary in javascript.
 /**
  * create struct
  *
- * arg1 = data object
- * arg2 = default value[optional, default 0]
- * arg3 = endian[optional, default true]
+ * @param {object} data object
+ * @param {number} default value[optional, default 0]
+ * @param {boolean} endian[optional, default true]
  */
 
 var struct = new Struct({
@@ -73,7 +73,7 @@ var struct = new Struct({
 /**
  * write arraybuffer from javascript object
  *
- * arg1 = object[optional]
+ * @param {object} for update[optional]
  */
 
 var ab = struct.write();
@@ -83,8 +83,8 @@ var ab = struct.write();
 /**
  * read data object from arraybuffer
  *
- * arg1 = arraybuffer
- * arg2 = offset[optinal, default 0]
+ * @param {object} arraybuffer
+ * @param {number} offset[optinal, default 0]
  */
 
 struct.read(ab);
