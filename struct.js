@@ -3,12 +3,16 @@
  *
  * @author Joon Kyoung (aka. Firejune)
  * @license MIT
- * @version 0.2.1
+ * @version 0.2.3
  *
  */
- 
+
+//TODO: add options[, 'string convert']
+
 (function(global, undefined) {
+
   "use strict";
+
 
   var typedefs = {
     int8   : 1, uint8  : 1,
@@ -33,6 +37,21 @@
     return str.charAt(0).toUpperCase() + str.slice(1);
   }
 
+  function align(model, callback) {
+    var struct = {};
+    for (var p in model) {
+      if (model.hasOwnProperty(p)) {
+        var item = model[p];
+        if (isObject(item)) {
+          struct[p] = align(item, callback);
+        } else {
+          callback(item, p, struct);
+        }
+      }
+    }
+    return struct;
+  }
+
   function update(model, obj) {
     for (var p in obj) {
       if (model.hasOwnProperty(p)) {
@@ -50,122 +69,109 @@
     return model;
   }
 
-  function align(model, callback) {
-    for (var p in model) {
-      if (model.hasOwnProperty(p)) {
-        var item = model[p];
-        if (isObject(item)) {
-          align(item, callback);
-        } else {
-          var value = isString(item) ? undefined : item[1];
-          callback(item, {
-            value: value,
-            typed: (isArray(item) && item[0] || item).toLowerCase(),
-            bytes: isArray(item) && item.length == 3 && item[2]
-              || (isString(value) || isArray(value)) && value.length || 1
-          });
-        }
-      }
-    }
-  }
+  function normalize(model, defaultValue) {
+    return align(model, function(item, prop, struct) {
+      var values = []
+        , typed = (isArray(item) && item[0] || item).toLowerCase()
+        , value = isString(item) ? defaultValue : item[1]
+        , bytes = isArray(item) && item.length == 3 && item[2]
+          || (isString(value) || isArray(value)) && value.length || 1;
 
-  function make(model, dv, that) {
-    var struct = {}
-      , endian = that.endian
-      , defaultValue = that.defaultValue;
-
-    for (var p in model) {
-      if (model.hasOwnProperty(p)) {
-        var item = model[p];
-        if (isObject(item)) {
-          struct[p] = make(item, dv, that);
-        } else {
-          var values = []
-            , typed = (isArray(item) && item[0] || item).toLowerCase()
-            , value = isString(item) ? defaultValue : item[1]
-            , bytes = isArray(item) && item.length == 3 && item[2]
-              || (isString(value) || isArray(value)) && value.length || 1;
-
-          for (var i = 0; i < bytes; i++) {
-            values[i] = dv['get' + capitalise(typed)](that.offset, endian);
-            that.offset += typedefs[typed];
-          }
-
-          if (isString(value) || isArray(value) || bytes > 1) {
-            struct[p] = isString(value) ? charCodeArrToStr(values) : values;
-          } else {
-            struct[p] = values[0];
-          }
-        }
-      }
-    }
-
-    return struct;
+      struct[prop] = [typed, value, bytes];
+    });
   }
 
   function getByteLength(struct) {
     var byteLength = 0;
 
-    align(struct, function(item, p) {
-      byteLength += typedefs[p.typed] * p.bytes;
+    align(struct, function(item) {
+      byteLength += typedefs[item[0]] * item[2];
     });
    
     return byteLength;
   }
 
   function strToCharCodeArr(str) {
-    var arr = [];
+    var arr = []
+      , len = str.length
+      , idx = 0;
 
-    for (var i = 0; i < str.length; i++) {
-      arr[i] = str.charCodeAt(i);   
+    while (idx < len) {
+      arr[idx] = str.charCodeAt(idx);
+      idx++;
     }
 
     return arr;
   }
 
   function charCodeArrToStr(arr) {
-    var str = [];
+    var str = []
+      , len = arr.length
+      , idx = 0;
 
-    for (var i = 0; i < arr.length; i++) {
-      str[i] = String.fromCharCode(arr[i]);
+    while (idx < len) {
+      str[idx] = String.fromCharCode(arr[idx]);
+      idx++;
     }
 
     return str.join('');
   }
 
   var Struct = function(struct, value, endian) {
-    this.struct = struct;
-    this.defaultValue = value || 0;
-    this.byteLength = getByteLength(struct);
-    this.emptyBuffer = new ArrayBuffer(this.byteLength);
     this.endian = endian == undefined && true || endian;
+    this.defaultValue = value || 0;
+    this.struct = normalize(struct, this.defaultValue);
+    this.byteLength = getByteLength(this.struct);
+    this.emptyBuffer = new ArrayBuffer(this.byteLength);
   };
 
   Struct.prototype = {
     read: function(arrayBuffer, offset) {
-      var dataView;
+      var dv
+        , that = this
+        , endian = this.endian
+        , defaultValue = this.defaultValue;
+
       if (arrayBuffer instanceof DataView) {
-        dataView = arrayBuffer;
+        dv = arrayBuffer;
       } else {
-        dataView = new DataView(arrayBuffer); 
+        dv = new DataView(arrayBuffer); 
       }
 
       this.offset = offset || 0;
-      return make(this.struct, dataView, this);
+  
+      return align(this.struct, function(item, prop, struct) {
+        var values = []
+          , typed = item[0]
+          , value = item[1]
+          , bytes = item[2]
+          , i = 0;
+  
+        while (i < bytes) {
+          values[i] = dv['get' + capitalise(typed)](that.offset, endian);
+          that.offset += typedefs[typed];
+          i++;
+        }
+  
+        if (isString(value) || isArray(value) || bytes > 1) {
+          struct[prop] = isString(value) ? charCodeArrToStr(values) : values;
+        } else {
+          struct[prop] = values[0];
+        }
+      });
     },
 
     write: function(struct) {
       var dataView = new DataView(this.emptyBuffer)
-        , defaultValue = this.defaultValue
         , endian = this.endian
         , offset = 0;
   
       if (struct != undefined) this.struct = update(this.struct, struct);
   
-      align(this.struct, function(item, p) {
-        var value = p.value === undefined ? defaultValue : p.value
-          , typed = p.typed
-          , bytes = p.bytes;
+      align(this.struct, function(item) {
+        var typed = item[0]
+          , value = item[1]
+          , bytes = item[2];
 
         if (isString(value) || isArray(value) || bytes > 1) {
           value = isString(value) && strToCharCodeArr(value) || value;
@@ -178,7 +184,7 @@
           offset += typedefs[typed];
         }
       });
-      
+
       return dataView.buffer;
     }
   };
