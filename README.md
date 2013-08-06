@@ -3,7 +3,7 @@ struct.js
 
 C-Like Data Structure for JavaScript.
 * Support multiple typed array
-* Support mult-byte typed arrays
+* Support assign multi-byte typed arrays as one property
 * Calculate offset automatically
 * Convert javascript data structure to arrayBuffer
 * Convert arrayBuffer to javascript data structure
@@ -15,7 +15,7 @@ C-Like Data Structure for JavaScript.
 * Super easy to use
 
 ### Why?
-This code is not elegance.
+The syntax of handle straight binary is not elegant in javascript.
 ```javascript
 // define struct
 var struct = {
@@ -51,7 +51,7 @@ console.log(data);
 ```
 
 ### With struct.js
-Elegance and more.
+More sexy things for handle straight binary in javascript.
 ```javascript
 /**
  * create struct
@@ -131,7 +131,7 @@ function parseBinary(count, chunk, callback) {
 }
 ```
 
-Support multi-byte typed array and convert string automatically:
+Assign multi-byte typed array and convert string automatically:
 ```javascript
 /**
  * create struct with multi-byte value
