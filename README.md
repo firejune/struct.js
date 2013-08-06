@@ -2,15 +2,15 @@ struct.js
 =========
 
 C-Like Data Structure for JavaScript.
-* Support mult-byte typed arrays
-* Auto convert string to charCode
-* Auto convert charCode to string
 * Support multiple typed array
+* Support mult-byte typed arrays
 * Calculate offset automatically
 * Convert javascript data structure to arrayBuffer
 * Convert arrayBuffer to javascript data structure
 * Recycling of javascript structure
 * Cool updating values of arrayBuffer
+* Auto convert string to charCode
+* Auto convert charCode to string
 * Teeny tiny library
 * Super easy to use
 
