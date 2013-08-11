@@ -141,10 +141,6 @@
   function update(model, obj) {
     for (var p in obj) {
       if (model.hasOwnProperty(p)) {
-        if (isString(model[p])) {
-          model[p] = [model[p], 0];
-        }
-
         if (isObject(model[p])) {
           model[p] = update(model[p], obj[p]);
         } else {
