@@ -2,6 +2,8 @@ struct.js
 =========
 
 C-Like Data Structure for JavaScript.
+* Support vary arrayBuffer byte length
+* Using Uint64, Int64 typed arrayBuffer
 * Support multiple typed array
 * Support assign multi-byte typed arrays as one property
 * Calculate offset automatically
