@@ -3,7 +3,7 @@
  *
  * @author Joon Kyoung (aka. Firejune)
  * @license MIT
- * @version 0.6.8
+ * @version 0.6.9
  *
  */
 
@@ -34,12 +34,12 @@
     this.constructor = Struct;
     this._debug = false;
     this._struct = {};
-    /*
-    console.log('STRUCT.CREATE, defaultValue:', this.defaultValue
+
+    this._debug && console.log('STRUCT.CREATE'
+      , 'defaultValue:', this.defaultValue
       , 'byteLength:', this.byteLength
       , 'endian:', this.endian
       , 'struct:', this.struct);
-    */
   };
 
 
@@ -55,6 +55,12 @@
     },
 
     read: function(arrayBuffer, offset) {
+      if (arrayBuffer === undefined && offset === undefined) {
+        return align(this.struct, function(item, prop, struct) {
+          struct[prop] = item[1];
+        });
+      }
+
       var that = this
         , endian = this.endian
         , dv = arrayBuffer instanceof DataView && arrayBuffer || new DataView(arrayBuffer);
@@ -67,8 +73,7 @@
       this._debug && console.info(
           'STRUCT.READ'
         , 'byteLength:', arrayBuffer.byteLength
-        , 'readOffset:', this.offset
-      );
+        , 'readOffset:', this.offset);
   
       var readed = align(this.struct, function(item, prop, struct) {
         var values = new Array()
@@ -79,7 +84,6 @@
           , size = typedefs[typed] || 1
           , lengthTyped = 'uint8'
           , i = 0;
-  
 
         if (isString(length)) {
           lengthTyped = length;
@@ -153,8 +157,7 @@
   
       this._debug && console.info(
           'STRUCT.WRITE'
-        , 'byteLength:', this.byteLength
-      );
+        , 'byteLength:', this.byteLength);
   
       align(this.struct, function(item, prop) {
         var values = new Array()
@@ -312,26 +315,20 @@
   }
 
   function normalize(model, defaultValue) {
-    return align(model, function(item, prop, struct) {
+    return align(model, function(params, prop, struct) {
       var values = []
-        // item이 배열이면 item[0] 아니면 item
-        , _typed = isArray(item) && item[0] || item
-        // _typed가 Struct면 _typed 아니면 소문자로 변환
+        // [0] typed, define correct typed string or sctruct object form params
+        , _typed = isArray(params) && params[0] || params
         , typed = isStruct(_typed) && _typed || _typed.toLowerCase()
-        // item이 그냥 스트링이면 기본값 아니면 item[1]
-        , value = isString(item) ? defaultValue : item[1]
-        // item이 배열이고 길이가 3이거나 더 길면 item[2]
-        // value가 스트링이거나 배열이면  value.length
-        // value가 버퍼배열이면 value.byteLength
-        // 암것도 아니면 1
-        , length = isArray(item) && item.length >= 3 && item[2]
+        // [1] value, define single, multiple, vary value form params
+        , value = isString(params) ? defaultValue : params[1]
+        // [2] length, define correct length of value(not byteLength)
+        , length = isArray(params) && params.length >= 3 && params[2]
           || (isString(value) || isArray(value) || isArrayBuffer(value)) && value.length
           || isArrayBuffer(value) && value.byteLength || 1
-        // item이 배열이고 length가 스트링이거나 1보다 크면
-        // length가 스트링이고 item[3]가 undefined이고 때 true 아니면 item[3]
-        // 아니면 false
-        , vary = isArray(item) && (isString(length) || length > 1)
-          ? isString(length) && item[3] === undefined && true || item[3] : false;
+        // [3] vary, define using vary type as boolean from params
+        , vary = isArray(params) && (isString(length) || length > 1)
+          ? isString(length) && params[3] === undefined && true || params[3] : false;
 
       struct[prop] = [typed, value, length, vary];
     });
