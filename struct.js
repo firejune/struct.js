@@ -3,7 +3,7 @@
  *
  * @author Joon Kyoung (aka. Firejune)
  * @license MIT
- * @version 0.5.2
+ * @version 0.6.8
  *
  */
 
@@ -31,6 +31,7 @@
     this.byteLength = getByteLength(this.struct);
     this.emptyBuffer = new ArrayBuffer(this.byteLength);
 
+    this.constructor = Struct;
     this._debug = false;
     this._struct = {};
     /*
@@ -46,7 +47,7 @@
 
   Struct.prototype = {
     update: function(struct) {
-      this.struct = update(this.struct, struct);
+      this.struct = update(this.struct, struct || {});
       this.byteLength = getByteLength(this.struct);
       this.emptyBuffer = new ArrayBuffer(this.byteLength);
 
@@ -58,6 +59,9 @@
         , endian = this.endian
         , dv = arrayBuffer instanceof DataView && arrayBuffer || new DataView(arrayBuffer);
 
+      if (arrayBuffer.byteLength === 0 || arrayBuffer.byteLength < this.byteLength)
+        return new Error('Uncaught IndexSizeError: Buffer size was zero byte.');
+
       this.offset = offset || 0;
 
       this._debug && console.info(
@@ -66,36 +70,53 @@
         , 'readOffset:', this.offset
       );
   
-      return align(this.struct, function(item, prop, struct) {
-        var values = []
+      var readed = align(this.struct, function(item, prop, struct) {
+        var values = new Array()
           , typed = item[0]
           , value = item[1]
           , length = item[2]
           , vary = item[3]
+          , size = typedefs[typed] || 1
           , lengthTyped = 'uint8'
           , i = 0;
   
+
         if (isString(length)) {
           lengthTyped = length;
           length = value.byteLength || value.length;
         }
 
+        if (arrayBuffer.byteLength <= that.offset)
+          return new Error('Uncaught IndexSizeError: Index or size was negative.');
+
         if (vary === true) {
-          length = dv['get' + capitalise(lengthTyped)](that.offset, endian) / typedefs[typed];
+          length = dv['get' + capitalise(lengthTyped)](that.offset, endian) / size;
           that.offset += typedefs[lengthTyped];
 
-          that._struct[prop + 'Size'] = [lengthTyped, length * typedefs[typed]];
+          that._struct[prop + 'Size'] = [lengthTyped, length * size];
           that._debug && console.log(prop + 'Size', that._struct[prop + 'Size'], that.offset);
         }
 
         if (isArrayBuffer(value)) {
-          values = arrayBuffer.slice(that.offset, that.offset + length * typedefs[typed]);
+          var endOffset = that.offset + length * size;
+          if (arrayBuffer.byteLength < endOffset)
+            return new Error('Uncaught IndexSizeError: Index or size was negative.');
+
+          values = arrayBuffer.slice(that.offset, endOffset);
           //console.log(arrayBuffer.byteLength, values.byteLength, length);
-          that.offset += length * typedefs[typed];
+          that.offset += length * size;
         } else {
           while (i < length) {
-            values[i] = dv['get' + capitalise(typed)](that.offset, endian);
-            that.offset += typedefs[typed];
+            if (isStruct(typed)) {
+              var buffer = arrayBuffer.slice(that.offset);
+              values[i] = typed.read(buffer);
+              size = typed.byteLength;
+            } else {
+              values[i] = dv['get' + capitalise(typed)](that.offset, endian);
+            }
+            if (isError(values[i])) return values[i];
+
+            that.offset += size;
             i++;
           }
         }
@@ -109,9 +130,14 @@
         
         that._struct[prop] = [typed, struct[prop]];
         that._debug && console.log(prop, that._struct[prop], that.offset);
-      });
+      }); // align
       
-      this.offset != this.emptyBuffer.byteLength && console.warn('Incorrect read buffer size');
+      if (!isError(readed)) {
+        this.byteLength = this.offset;
+        //this.offset != arrayBuffer.byteLength && console.warn('Incorrect buffer size readed');
+      }
+
+      return readed;
     },
 
     write: function(struct) {
@@ -131,12 +157,18 @@
       );
   
       align(this.struct, function(item, prop) {
-        var values = []
+        var values = new Array()
           , typed = item[0]
           , value = item[1]
           , length = item[2]
           , vary = item[3]
-          , lengthTyped = 'uint8';
+          , size = typedefs[typed]
+          , lengthTyped = 'uint8'
+          , i = 0;
+
+        if (size === undefined && isStruct(typed)) {
+          size = typed.byteLength
+        }
 
         if (isString(length)) {
           lengthTyped = length;
@@ -144,9 +176,9 @@
         }
 
         if (vary === true) {
-          dataView['set' + capitalise(lengthTyped)](offset, length * typedefs[typed], endian);
+          dataView['set' + capitalise(lengthTyped)](offset, length * size, endian);
           offset += typedefs[lengthTyped];
-          that._struct[prop + 'Size'] = [lengthTyped, length * typedefs[typed]];
+          that._struct[prop + 'Size'] = [lengthTyped, length * size];
           that._debug && console.log(prop + 'Size', that._struct[prop + 'Size'], offset);
         }
 
@@ -161,29 +193,51 @@
           values = [value];
         }
 
-        for (var i = 0; i < length; i++) {
-          dataView['set' + capitalise(typed)](offset, values[i], endian);
-          offset += typedefs[typed];
+        while (i < length) {
+          if (isStruct(typed)) {
+            var buffer = typed.write();
+            var tmp = new Uint8Array(buffer);
+            var j = 0;
+ 
+            while (j < tmp.length) {
+              dataView.setUint8(offset, tmp[j], endian);
+              offset += 1;
+              j++;
+            }
+
+          } else {
+            dataView['set' + capitalise(typed)](offset, values[i], endian);
+          }
+
+          offset += size;
+          i++;
         }
 
         that._debug && console.log(prop, that._struct[prop], offset);
-      });
+      }); // align
 
-      offset != this.emptyBuffer.byteLength && console.warn('Incorrect write buffer size');
+      offset != this.emptyBuffer.byteLength && console.warn('Incorrect buffer size writed');
 
       return dataView.buffer;
     }
   };
 
   var typedefs = {
-    int8   : 1, uint8  : 1,
-    int16  : 2, uint16 : 2,
-    int32  : 4, uint32 : 4, float32: 4, 
-    int64  : 8, uint64 : 8, float64: 8
+    int8 : 1, uint8 : 1,
+    int16: 2, uint16: 2,
+    int32: 4, uint32: 4, float32: 4, 
+    int64: 8, uint64: 8, float64: 8
   };
 
 
   /** @private **/
+  function isStruct(a) {
+    return !!a && a.constructor === Struct;
+  }
+
+  function isError(a) {
+    return !!a && a.constructor === Error;
+  }
 
   function isArray(a) {
     return !!a && a === Array || a.constructor === Array;
@@ -214,14 +268,20 @@
   }
 
   function align(model, callback) {
-    var struct = {};
+    var struct = {}
+      , error = null;
+
     for (var p in model) {
       if (model.hasOwnProperty(p)) {
         var item = model[p];
         if (isObject(item)) {
           struct[p] = align(item, callback);
         } else {
-          callback(item, p, struct);
+          error = callback(item, p, struct);
+          if (error) {
+            struct = error;
+            break;
+          }
         }
       }
     }
@@ -254,8 +314,10 @@
   function normalize(model, defaultValue) {
     return align(model, function(item, prop, struct) {
       var values = []
-        // item이 배열이면 item[0] 아니면 item을 소문자로 변환
-        , typed = (isArray(item) && item[0] || item).toLowerCase()
+        // item이 배열이면 item[0] 아니면 item
+        , _typed = isArray(item) && item[0] || item
+        // _typed가 Struct면 _typed 아니면 소문자로 변환
+        , typed = isStruct(_typed) && _typed || _typed.toLowerCase()
         // item이 그냥 스트링이면 기본값 아니면 item[1]
         , value = isString(item) ? defaultValue : item[1]
         // item이 배열이고 길이가 3이거나 더 길면 item[2]
@@ -283,7 +345,12 @@
         , value = item[1]
         , length = item[2]
         , vary = item[3]
+        , size = typedefs[typed]
         , lengthTyped = 'uint8';
+
+      if (size === undefined && isStruct(typed)) {
+        size = typed.byteLength
+      }
 
       if (isString(length)) {
         lengthTyped = length;
@@ -292,7 +359,7 @@
 
       if (vary === true) byteLength += typedefs[lengthTyped];
 
-      byteLength += length * typedefs[typed];
+      byteLength += length * size;
     });
 
     return byteLength;
@@ -328,173 +395,96 @@
     return Array.prototype.slice.call(new global[capitalise(typed) + 'Array'](buf));
   }
 
-  /** support 64bit shim **/
+  /** support 64-bit int shim **/
 
   if (DataView.prototype.getUint64 === undefined &&
       DataView.prototype.setUint64 === undefined &&
       DataView.prototype.getInt64  === undefined &&
       DataView.prototype.setInt64  === undefined) {
 
-    var TWO_PWR_16_DBL = 1 << 16;
-    var TWO_PWR_32_DBL = TWO_PWR_16_DBL * TWO_PWR_16_DBL;
-    var TWO_PWR_64_DBL = TWO_PWR_32_DBL * TWO_PWR_32_DBL;
-    var TWO_PWR_63_DBL = TWO_PWR_64_DBL / 2;
-
-    var Long = function(low, high, unsigned) {
-      this.low = low | 0;
-      this.high = high | 0;
-      this.unsigned = !!unsigned;
+    var pow2 = function(n) {
+      return (n >= 0 && n < 31) ? (1 << n) : (pow2[n] || (pow2[n] = Math.pow(2, n)));
     };
 
-    Long.prototype = {
-      equals: function(other) {
-        if (this.unsigned != other.unsigned && (this.high >>> 31) != (other.high >>> 31)) return false;
-        return (this.high == other.high) && (this.low == other.low);
+    var Uint64 = function(lo, hi) {
+      this.lo = lo;
+      this.hi = hi;
+    };
+    
+    Uint64.prototype = {
+      valueOf: function () {
+        return this.lo + pow2(32) * this.hi;
       },
+    
+      toString: function () {
+        return Number.prototype.toString.apply(this.valueOf(), arguments);
+      }
+    };
+    
+    Uint64.fromNumber = function (number) {
+      var hi = Math.floor(number / pow2(32))
+        , lo = number - hi * pow2(32);
 
-      not: function() {
-        return Long.fromBits(~this.low, ~this.high, this.unsigned);
-      },
-  
-      add: function(other) {
-        // Divide each number into 4 chunks of 16 bits, and then sum the chunks.
-          
-        var a48 = this.high >>> 16;
-        var a32 = this.high & 0xFFFF;
-        var a16 = this.low >>> 16;
-        var a00 = this.low & 0xFFFF;
-  
-        var b48 = other.high >>> 16;
-        var b32 = other.high & 0xFFFF;
-        var b16 = other.low >>> 16;
-        var b00 = other.low & 0xFFFF;
-  
-        var c48 = 0, c32 = 0, c16 = 0, c00 = 0;
-        c00 += a00 + b00;
-        c16 += c00 >>> 16;
-        c00 &= 0xFFFF;
-        c16 += a16 + b16;
-        c32 += c16 >>> 16;
-        c16 &= 0xFFFF;
-        c32 += a32 + b32;
-        c48 += c32 >>> 16;
-        c32 &= 0xFFFF;
-        c48 += a48 + b48;
-        c48 &= 0xFFFF;
-  
-        return Long.fromBits((c16 << 16) | c00, (c48 << 16) | c32, this.unsigned);
-      },
-  
-      negate: function() {
-        if (!this.unsigned && this.equals(Long.MIN_SIGNED_VALUE)) return Long.MIN_SIGNED_VALUE;
-        return this.not().add(Long.ONE);
-      },
-  
-      toInt: function() {
-        return this.unsigned ? this.low >>> 0 : this.low;
-      },
-      
-      getHighBitsUnsigned: function() {
-        return this.high >>> 0;
-      },
-  
-      getLowBitsUnsigned: function() {
-        return this.low >>> 0;
-      },
-  
-      getLowBits: function() {
-        return this.low;
-      },
-  
-      getHighBits: function() {
-        return this.high;
+      return new Uint64(lo, hi);
+    };
+    
+    var Int64 = function(lo, hi) {
+      Uint64.apply(this, arguments);
+    };
+
+    Int64.prototype = 'create' in Object ? Object.create(Uint64.prototype) : new Uint64();
+
+    Int64.prototype.valueOf = function () {
+      if (this.hi < pow2(31)) {
+        return Uint64.prototype.valueOf.apply(this, arguments);
+      }
+      return -((pow2(32) - this.lo) + pow2(32) * (pow2(32) - 1 - this.hi));
+    };
+    
+    Int64.fromNumber = function (number) {
+      var lo, hi;
+      if (number >= 0) {
+        var unsigned = Uint64.fromNumber(number);
+        lo = unsigned.lo;
+        hi = unsigned.hi;
+      } else {
+        hi = Math.floor(number / pow2(32));
+        lo = number - hi * pow2(32);
+        hi += pow2(32);
+      }
+      return new Int64(lo, hi);
+    };
+
+    
+    DataView.prototype.getUint64 = function(byteOffset, littleEndian) {
+      var parts = littleEndian ? [0, 4] : [4, 0];
+      for (var i = 0; i < 2; i++) {
+        parts[i] = this.getUint32(byteOffset + parts[i], littleEndian);
+      }
+      return new Uint64(parts[0], parts[1]).valueOf();
+    };
+
+    DataView.prototype.setUint64 = function(byteOffset, value, littleEndian) {
+      value = Uint64.fromNumber(value);
+      var parts = littleEndian ? {lo: 0, hi: 4} : {lo: 4, hi: 0};
+      for (var partName in parts) {
+        this.setUint32(byteOffset + parts[partName], value[partName], littleEndian);
       }
     };
 
-
-    Long.fromBits = function(lowBits, highBits, unsigned) {
-      return new Long(lowBits, highBits, unsigned);
-    };
-
-    Long.fromInt = function(value, unsigned) {
-      if (!unsigned) {
-        value = value | 0;
-        return new Long(value, value < 0 ? -1 : 0, false);
-      } else {
-        value = value >>> 0;
-        return new Long(value, (value | 0) < 0 ? -1 : 0, true);
+    DataView.prototype.getInt64 = function(byteOffset, littleEndian) {
+      var parts = littleEndian ? [0, 4] : [4, 0];
+      for (var i = 0; i < 2; i++) {
+        parts[i] = this.getUint32(byteOffset + parts[i], littleEndian);
       }
+      return new Int64(parts[0], parts[1]).valueOf();
     };
 
-    Long.fromNumber = function(value, unsigned) {
-      unsigned = !!unsigned;
-
-      if (isNaN(value) || !isFinite(value)) {
-        return Long.ZERO;
-      } else if (!unsigned && value <= -TWO_PWR_63_DBL) {
-        return Long.MIN_SIGNED_VALUE;
-      } else if (unsigned && value <= 0) {
-        return Long.MIN_UNSIGNED_VALUE;
-      } else if (!unsigned && value + 1 >= TWO_PWR_63_DBL) {
-        return Long.MAX_SIGNED_VALUE;
-      } else if (unsigned && value >= TWO_PWR_64_DBL) {
-        return Long.MAX_UNSIGNED_VALUE;
-      } else if (value < 0) {
-        return Long.fromNumber(-value, false).negate();
-      } else {
-        return new Long((value % TWO_PWR_32_DBL) | 0, (value / TWO_PWR_32_DBL) | 0, unsigned);
-      }
-    };
-
-    Long.ZERO = Long.fromInt(0);
-    Long.ONE = Long.fromInt(1);
-
-    Long.MAX_SIGNED_VALUE = Long.fromBits(0xFFFFFFFF | 0, 0x7FFFFFFF | 0, false);
-    Long.MAX_UNSIGNED_VALUE = Long.fromBits(0xFFFFFFFF | 0, 0xFFFFFFFF | 0, true);
-    Long.MIN_SIGNED_VALUE = Long.fromBits(0, 0x80000000 | 0, false);
-    Long.MIN_UNSIGNED_VALUE = Long.fromBits(0, 0, true);
-
-
-    DataView.prototype.getUint64 = function(offset, littleEndian) {
-      var value;
-      if (littleEndian) {
-        value = Long.fromBits(this.getUint32(offset, true), this.getUint32(offset + 4, true), true);
-      } else {
-        value = Long.fromBits(this.getUint32(offset + 4, false), this.getUint32(offset, false), true);
-      }
-      return value.toInt();
-    };
-
-    DataView.prototype.setUint64 = function(offset, value, littleEndian) {
-      value = Long.fromNumber(value, true);
-
-      if (littleEndian) {
-        this.setUint32(offset, value.getLowBitsUnsigned(), true);
-        this.setUint32(offset + 4, value.getHighBitsUnsigned(), true);
-      } else {
-        this.setUint32(offset, value.getHighBitsUnsigned(), false);
-        this.setUint32(offset + 4, value.getLowBitsUnsigned(), false);
-      }
-    };
-
-    DataView.prototype.getInt64 = function(offset, littleEndian) {
-      var value;
-      if (littleEndian) {
-        value = Long.fromBits(this.getInt32(offset, true), this.getInt32(offset + 4, true), false);
-      } else {
-        value = Long.fromBits(this.getInt32(offset + 4, false), this.getInt32(offset, false), false);
-      }
-      return value.toInt();
-    };
-
-    DataView.prototype.setInt64 = function(offset, littleEndian) {
-      value = Long.fromNumber(value, false);
-      if (littleEndian) {
-        this.setInt32(offset, value.getLowBits(), true);
-        this.setInt32(offset + 4, value.getHighBits(), true);
-      } else {
-        this.setInt32(offset, value.getHighBits(), false);
-        this.setInt32(offset + 4, value.getLowBits(), false);
+    DataView.prototype.setInt64 = function(byteOffset, littleEndian) {
+      value = Int64.fromNumber(value);
+      var parts = littleEndian ? {lo: 0, hi: 4} : {lo: 4, hi: 0};
+      for (var partName in parts) {
+        this.setUint32(byteOffset + parts[partName], value[partName], littleEndian);
       }
     };
   }
