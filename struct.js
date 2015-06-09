@@ -3,6 +3,7 @@
  *
  */
 
+// TODO: add options[, 'string convert']
 (function(global, undefined) {
   "use strict";
 
@@ -11,16 +12,15 @@
    * @constructs Struct
    * @classdesc C-Like Data Structure for JavaScript.
    *
-   * @see Struct.js on GitHub <https://github.com/firejune/struct.js>
    * @author Joon Kyoung <firejune@gmail.com>
    * @license MIT
    * @version 0.9.1
+   * @see Struct.js on GitHub <https://github.com/firejune/struct.js>
    *
    * @param {object} struct
    * @param {*} value
    * @param {boolean} endianness
    *
-   * @todo Add a option[, 'string convert']
    */
   var Struct = function(struct, value, endianness) {
     /** @type {boolean} */
@@ -567,14 +567,13 @@
   }
 
   /** support 64-bit int shim **/
-
   if (DataView.prototype.getUint64 === undefined &&
       DataView.prototype.setUint64 === undefined &&
       DataView.prototype.getInt64  === undefined &&
       DataView.prototype.setInt64  === undefined) {
 
     var pow2 = function(n) {
-      return (n >= 0 && n < 31) ? (1 << n) : (pow2[n] || (pow2[n] = Math.pow(2, n)));
+      return (n >= 0 && n < 31) ? (1 << n) : (pow2[n] || (pow2[n] = Math.pow(2, n) - 1));
     };
 
     var Uint64 = function(lo, hi) {
@@ -626,7 +625,6 @@
       return new Int64(lo, hi);
     };
 
-
     DataView.prototype.getUint64 = function(byteOffset, endianness) {
       var parts = endianness ? [0, 4] : [4, 0];
       for (var i = 0; i < 2; i++) {
@@ -661,6 +659,5 @@
   }
 
   global.Struct = Struct;
-
 
 })(this);
